@@ -37,7 +37,7 @@ class SubjectScreen extends StatelessWidget {
                       onPressed: () => Navigator.pop(context),
                     ),
                     Text(
-                      subject.iconPath,
+                      "subject.iconPath",
                       style: const TextStyle(fontSize: 32),
                     ),
                     const SizedBox(width: 12),

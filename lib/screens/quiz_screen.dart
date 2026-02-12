@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'dart:async';
 import '../constants/app_constants.dart';
 import '../models/subject_model.dart';
-import '../services/auth_provider.dart';
+import '../services/supabase_service.dart';
 import 'quiz_result_screen.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -24,15 +23,17 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _isAnswered = false;
   Timer? _timer;
   int _timeLeft = 30;
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  // Sample questions - реал иловада Supabase'дан келади
+  // Savollar ro'yxati
   late List<Question> _questions;
+  final SupabaseService _supabaseService = SupabaseService();
 
   @override
   void initState() {
     super.initState();
     _loadQuestions();
-    _startTimer();
   }
 
   @override
@@ -41,10 +42,49 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
-  void _loadQuestions() {
-    // Bu yerda Supabase'дан savollar yuklanadi
-    // Hozircha demo savollar
-    _questions = [
+  Future<void> _loadQuestions() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      // Supabase'dan savollar yukla
+      final questions = await _supabaseService.getQuestions(
+        subjectId: widget.subject.id,
+        level: widget.level,
+        limit: 10,
+      );
+
+      if (mounted) {
+        if (questions.isEmpty) {
+          // Demo ma'lumotlar agar Supabase bo'sh bo'lsa
+          setState(() {
+            _questions = _getDemoQuestions();
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _questions = questions;
+            _isLoading = false;
+          });
+        }
+        _startTimer();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Savollar yuklanishida xato: $e';
+          _isLoading = false;
+          _questions = _getDemoQuestions();
+        });
+      }
+      debugPrint('Savollar yuklash xatosi: $e');
+    }
+  }
+
+  List<Question> _getDemoQuestions() {
+    return [
       Question(
         id: '1',
         subjectId: widget.subject.id,
@@ -73,7 +113,6 @@ class _QuizScreenState extends State<QuizScreen> {
         questionText: '10 - 7 = ?',
         options: ['2', '3', '4', '5'],
         correctAnswer: '3',
-        points: 10,
       ),
       Question(
         id: '4',
@@ -167,6 +206,81 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Loading state
+    if (_isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primary.withOpacity(0.1),
+                AppColors.background,
+              ],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Error state
+    if (_errorMessage != null && _questions.isEmpty) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primary.withOpacity(0.1),
+                AppColors.background,
+              ],
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: AppColors.error,
+                  size: 64,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Xato',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _errorMessage ?? '',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Orqaga qaytish'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final question = _questions[_currentQuestionIndex];
 
     return Scaffold(

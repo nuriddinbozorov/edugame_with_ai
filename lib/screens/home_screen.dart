@@ -354,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(subject.iconPath, style: const TextStyle(fontSize: 48)),
+            Text("subject.iconPath", style: const TextStyle(fontSize: 48)),
             const SizedBox(height: 12),
             Text(
               subject.nameUz,
