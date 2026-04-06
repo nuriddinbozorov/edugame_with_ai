@@ -364,8 +364,8 @@ class UserAchievement {
       userId: json['user_id'] as String,
       achievementId: json['achievement_id'] as String,
       unlockedAt: DateTime.parse(json['unlocked_at'] as String),
-      achievement: json['achievement'] != null
-          ? Achievement.fromJson(json['achievement'] as Map<String, dynamic>)
+      achievement: json['achievements'] != null
+          ? Achievement.fromJson(json['achievements'] as Map<String, dynamic>)
           : null,
     );
   }

@@ -31,13 +31,52 @@ class AuthProvider extends ChangeNotifier {
   // Set error
   void _setError(String? error) {
     _error = error;
-    _setStatus(AuthStatus.error);
+    _setStatus(AuthStatus.unauthenticated);
   }
 
   // Clear error
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  // =====================================================
+  // INITIALIZATION METHODS
+  // =====================================================
+
+  /// Ilovaning yuklanganda joriy sessiyani tekshiradi
+  Future<void> checkAuthStatus() async {
+    try {
+      _setStatus(AuthStatus.loading);
+      AppLogger.info('Auth Provider: Checking authentication status');
+
+      final authUser = _supabaseService.client.auth.currentUser;
+
+      if (authUser != null) {
+        // Sessiya mavjud, foydalanuvchining ma'lumotlarini yukla
+        AppLogger.info('Auth Provider: User session found: ${authUser.id}');
+
+        final user = await _supabaseService.getUser(authUser.id);
+        if (user != null) {
+          _currentUser = user;
+          await _loadUserStats();
+          _setStatus(AuthStatus.authenticated);
+          AppLogger.success('Auth Provider: User authenticated from session');
+        } else {
+          _setStatus(AuthStatus.unauthenticated);
+          AppLogger.warning(
+            'Auth Provider: Session exists but user not found in database',
+          );
+        }
+      } else {
+        // Sessiya yo'q, foydalanuvchi kirishmagan
+        _setStatus(AuthStatus.unauthenticated);
+        AppLogger.info('Auth Provider: No user session found');
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Auth Provider: Auth status check error', e, stackTrace);
+      _setStatus(AuthStatus.unauthenticated);
+    }
   }
 
   // =====================================================
@@ -126,6 +165,21 @@ class AuthProvider extends ChangeNotifier {
     } catch (e, stackTrace) {
       AppLogger.error('Auth Provider: Sign out error', e, stackTrace);
       _setError(e.toString());
+    }
+  }
+
+  /// Parolni tiklash uchun elektron pochtaga havola yuboradi.
+  Future<bool> resetPassword(String email) async {
+    try {
+      clearError();
+      AppLogger.info('Auth Provider: Sending password reset to $email');
+      await _supabaseService.resetPasswordForEmail(email);
+      AppLogger.success('Auth Provider: Password reset email sent');
+      return true;
+    } catch (e, stackTrace) {
+      AppLogger.error('Auth Provider: Password reset error', e, stackTrace);
+      _setError(e.toString());
+      return false;
     }
   }
 

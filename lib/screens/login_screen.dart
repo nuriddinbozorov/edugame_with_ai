@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../services/auth_provider.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -35,8 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (success && mounted) {
-        Navigator.of(context).pushReplacement(
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -177,6 +179,27 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ForgotPasswordScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                AppStrings.forgotPassword,
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 24),
                           Consumer<AuthProvider>(

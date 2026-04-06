@@ -179,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${user.grade}-sinf o\'quvchisi',
+                      '${user.grade ?? '?'}-sinf o\'quvchisi',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -354,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("subject.iconPath", style: const TextStyle(fontSize: 48)),
+            Text(subject.iconPath ?? subject.getIconEmoji(), style: const TextStyle(fontSize: 48)),
             const SizedBox(height: 12),
             Text(
               subject.nameUz,

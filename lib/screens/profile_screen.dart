@@ -117,7 +117,7 @@ class ProfileScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              '${user.grade}-sinf',
+                              '${user.grade ?? '?'}-sinf',
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,

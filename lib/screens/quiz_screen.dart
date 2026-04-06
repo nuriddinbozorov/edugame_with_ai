@@ -191,7 +191,8 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _finishQuiz() {
     _timer?.cancel();
-    Navigator.of(context).pushReplacement(
+    Navigator.pushReplacement(
+      context,
       MaterialPageRoute(
         builder: (_) => QuizResultScreen(
           subject: widget.subject,

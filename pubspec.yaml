@@ -44,7 +44,7 @@ dependencies:
   get: ^4.6.6
 
   # Database
-  supabase_flutter: ^2.3.4
+  supabase_flutter: ^2.8.0
 
   # Storage
   shared_preferences: ^2.2.2

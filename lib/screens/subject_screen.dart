@@ -19,7 +19,10 @@ class SubjectScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(int.parse('0xFF${subject.color}')).withOpacity(0.2),
+              (subject.color != null
+                      ? Color(int.parse('0xFF${subject.color}'))
+                      : AppColors.primary)
+                  .withOpacity(0.2),
               AppColors.background,
             ],
           ),
@@ -37,7 +40,7 @@ class SubjectScreen extends StatelessWidget {
                       onPressed: () => Navigator.pop(context),
                     ),
                     Text(
-                      "subject.iconPath",
+                      subject.iconPath ?? subject.getIconEmoji(),
                       style: const TextStyle(fontSize: 32),
                     ),
                     const SizedBox(width: 12),

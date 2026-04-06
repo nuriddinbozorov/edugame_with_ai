@@ -1,14 +1,67 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../models/user_model.dart';
+import '../services/supabase_service.dart';
 
-class LeaderboardScreen extends StatelessWidget {
+class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Bu yerda Supabase'дан yetakchilar ro'yxati yuklanadi
-    // Hozircha demo ma'lumotlar
-    final leaders = [
+  State<LeaderboardScreen> createState() => _LeaderboardScreenState();
+}
+
+class _LeaderboardScreenState extends State<LeaderboardScreen> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _leaders = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLeaderboard();
+  }
+
+  Future<void> _loadLeaderboard() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final supabaseService = SupabaseService();
+      final users = await supabaseService.getLeaderboard(limit: 10);
+
+      if (mounted) {
+        if (users.isNotEmpty) {
+          setState(() {
+            _leaders = users
+                .asMap()
+                .entries
+                .map((entry) => {
+                      'name': entry.value.name,
+                      'points': entry.value.points,
+                      'level': entry.value.level,
+                      'rank': entry.key + 1,
+                    })
+                .toList();
+            _isLoading = false;
+          });
+        } else {
+          // Demo ma'lumotlar fallback sifatida
+          setState(() {
+            _leaders = _getDemoLeaders();
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _leaders = _getDemoLeaders();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _getDemoLeaders() {
+    return [
       {'name': 'Aziza Karimova', 'points': 1250, 'level': 15, 'rank': 1},
       {'name': 'Jamshid Tursunov', 'points': 1180, 'level': 14, 'rank': 2},
       {'name': 'Dilnoza Rahimova', 'points': 1050, 'level': 13, 'rank': 3},
@@ -20,6 +73,31 @@ class LeaderboardScreen extends StatelessWidget {
       {'name': 'Nilufar Saidova', 'points': 760, 'level': 10, 'rank': 9},
       {'name': 'Jasur Mirzaev', 'points': 720, 'level': 9, 'rank': 10},
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.warning.withOpacity(0.2),
+                AppColors.background,
+              ],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: Container(
@@ -61,22 +139,23 @@ class LeaderboardScreen extends StatelessWidget {
               ),
 
               // Top 3
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.paddingLarge,
+              if (_leaders.length >= 3)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.paddingLarge,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildTopCard(_leaders[1], 2),
+                      const SizedBox(width: 8),
+                      _buildTopCard(_leaders[0], 1),
+                      const SizedBox(width: 8),
+                      _buildTopCard(_leaders[2], 3),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildTopCard(leaders[1], 2),
-                    const SizedBox(width: 8),
-                    _buildTopCard(leaders[0], 1),
-                    const SizedBox(width: 8),
-                    _buildTopCard(leaders[2], 3),
-                  ],
-                ),
-              ),
 
               const SizedBox(height: 24),
 
@@ -90,14 +169,22 @@ class LeaderboardScreen extends StatelessWidget {
                       topRight: Radius.circular(AppSizes.radiusLarge),
                     ),
                   ),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(AppSizes.paddingMedium),
-                    itemCount: leaders.length - 3,
-                    itemBuilder: (context, index) {
-                      final leader = leaders[index + 3];
-                      return _buildLeaderCard(leader);
-                    },
-                  ),
+                  child: _leaders.length > 3
+                      ? ListView.builder(
+                          padding:
+                              const EdgeInsets.all(AppSizes.paddingMedium),
+                          itemCount: _leaders.length - 3,
+                          itemBuilder: (context, index) {
+                            final leader = _leaders[index + 3];
+                            return _buildLeaderCard(leader);
+                          },
+                        )
+                      : const Center(
+                          child: Text(
+                            'Hozircha boshqa o\'quvchilar yo\'q',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ),
                 ),
               ),
             ],

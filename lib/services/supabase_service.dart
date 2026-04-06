@@ -55,19 +55,25 @@ class SupabaseService {
       final response = await client.auth.signUp(
         email: email,
         password: password,
+        data: {
+          'name': name,
+          'grade': grade.toString(),
+        },
       );
 
       if (response.user != null) {
-        final user = User(
-          id: response.user!.id,
-          name: name,
-          email: email,
-          grade: grade,
-          // createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
+        // Trigger public.handle_new_user() avtomatik users jadvaliga yozadi.
+        // Biroq trigger async ishlashi mumkin, shuning uchun biroz kutamiz.
+        await Future.delayed(const Duration(milliseconds: 500));
 
-        await client.from('users').insert(user.toJson());
+        final user = await getUser(response.user!.id) ??
+            User(
+              id: response.user!.id,
+              name: name,
+              email: email,
+              grade: grade,
+              updatedAt: DateTime.now(),
+            );
 
         AppLogger.success('User signed up successfully: ${user.id}');
         return user;
@@ -109,6 +115,11 @@ class SupabaseService {
       return null;
     } on AuthException catch (e) {
       AppLogger.error('Auth error during sign in: ${e.message}', e);
+      if (e.message.toLowerCase().contains('email not confirmed')) {
+        throw Exception(
+          'Elektron pochtangiz tasdiqlanmagan. Pochta qutingizni tekshiring.',
+        );
+      }
       throw Exception('Kirish xatosi: ${e.message}');
     } catch (e, stackTrace) {
       AppLogger.error('Unexpected error during sign in', e, stackTrace);
@@ -124,6 +135,21 @@ class SupabaseService {
     } catch (e, stackTrace) {
       AppLogger.error('Error during sign out', e, stackTrace);
       throw Exception('Chiqishda xatolik yuz berdi');
+    }
+  }
+
+  /// Parolni tiklash uchun elektron pochtaga havola yuboradi.
+  Future<void> resetPasswordForEmail(String email) async {
+    try {
+      AppLogger.info('Sending password reset email to: $email');
+      await client.auth.resetPasswordForEmail(email);
+      AppLogger.success('Password reset email sent successfully');
+    } on AuthException catch (e) {
+      AppLogger.error('Auth error during password reset: ${e.message}', e);
+      throw Exception('Parolni tiklash xatosi: ${e.message}');
+    } catch (e, stackTrace) {
+      AppLogger.error('Error during password reset', e, stackTrace);
+      throw Exception('Parolni tiklashda xatolik yuz berdi');
     }
   }
 
@@ -178,7 +204,7 @@ class SupabaseService {
           .rpc('get_user_stats', params: {'user_id_param': userId})
           .single();
 
-      final stats = UserStats.fromJson(response);
+      final stats = UserStats.fromJson(Map<String, dynamic>.from(response));
       AppLogger.success('User stats fetched successfully');
       return stats;
     } catch (e, stackTrace) {
@@ -276,7 +302,8 @@ class SupabaseService {
     try {
       AppLogger.info('Saving test result for user ${result.userId}');
 
-      await client.from('test_results').insert(result.toJson());
+      final data = Map<String, dynamic>.from(result.toJson())..remove('id');
+      await client.from('test_results').insert(data);
 
       AppLogger.success('Test result saved successfully');
       return true;

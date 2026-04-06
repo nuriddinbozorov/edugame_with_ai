@@ -7,6 +7,8 @@ import 'constants/app_constants.dart';
 import 'services/auth_provider.dart';
 import 'services/supabase_service.dart';
 import 'utils/logger.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,13 +21,6 @@ void main() async {
     // Supabase Dashboard > Settings > API dan oling
     const supabaseUrl = 'https://tnoijevkqjhgxzfewrtq.supabase.co';
     const supabaseAnonKey = 'sb_publishable_qsjhBJkP_upwr8VIf4AoeQ_JzEUeZJM';
-
-    if (supabaseUrl == 'https://tnoijevkqjhgxzfewrtq.supabase.co' ||
-        supabaseAnonKey == 'sb_publishable_qsjhBJkP_upwr8VIf4AoeQ_JzEUeZJM') {
-      AppLogger.warning(
-        'IMPORTANT: Please set your Supabase URL and Anon Key in main.dart!',
-      );
-    }
 
     await supabaseService.initialize(supabaseUrl, supabaseAnonKey);
     AppLogger.success('App: Supabase initialized successfully');
@@ -218,8 +213,100 @@ class EduGameApp extends StatelessWidget {
           ),
         ),
 
-        // Home page (Demo - ni keyin to'g'ri screen bilan almashtiring)
-        home: const DemoStartScreen(),
+        // Home page - RootScreen orqali authentication tekshiradi
+        home: const RootScreen(),
+      ),
+    );
+  }
+}
+
+/// Birinchi ekran - avtentifikatsiya statusiga qarab login yoki home ko'rsatadi
+class RootScreen extends StatefulWidget {
+  const RootScreen({super.key});
+
+  @override
+  State<RootScreen> createState() => _RootScreenState();
+}
+
+class _RootScreenState extends State<RootScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Build tamamlanganidan keyin kontekst ishlatib o'qish uchun
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeApp();
+    });
+  }
+
+  Future<void> _initializeApp() async {
+    // Birinchi martta ilovani yukladigimizda sessiya tekshiramiz
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.checkAuthStatus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, _) {
+        // Hozir yuklanmoqda - splash screen ko'rsatamiz
+        if (authProvider.status == AuthStatus.loading) {
+          return const SplashScreen();
+        }
+
+        // Foydalanuvchi autentifikatsiya qilgan - home screenga yo'naltiramiz
+        if (authProvider.isAuthenticated) {
+          return const HomeScreen();
+        }
+
+        // Autentifikatsiya qilmagan - login screenga yo'naltiramiz
+        return const LoginScreen();
+      },
+    );
+  }
+}
+
+/// Splash screen - yuklanish vaqtida ko'rsatiladi
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.gradientPrimary),
+        child: const SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.school, size: 100, color: Colors.white),
+                SizedBox(height: 24),
+                Text(
+                  AppStrings.appName,
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  AppStrings.appTagline,
+                  style: TextStyle(fontSize: 18, color: Colors.white70),
+                ),
+                SizedBox(height: 48),
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'Yuklanmoqda...',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

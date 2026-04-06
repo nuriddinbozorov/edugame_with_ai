@@ -5,6 +5,8 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../constants/app_constants.dart';
 import '../models/subject_model.dart';
 import '../services/auth_provider.dart';
+import '../services/supabase_service.dart';
+import 'quiz_screen.dart';
 
 class QuizResultScreen extends StatefulWidget {
   final Subject subject;
@@ -52,10 +54,25 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
 
   Future<void> _updateUserProgress() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    if (user != null) {
+      final result = TestResult(
+        id: '',
+        userId: user.id,
+        subjectId: widget.subject.id,
+        level: widget.level,
+        score: widget.score,
+        totalQuestions: widget.totalQuestions,
+        correctAnswers: widget.correctAnswers,
+        completedAt: DateTime.now(),
+        durationSeconds: null,
+      );
+      await SupabaseService().saveTestResult(result);
+    }
     await authProvider.updateUserPoints(widget.score);
 
     // Level up if passed
-    if (widget.level == authProvider.currentUser?.level) {
+    if (user != null && widget.level == user.level) {
       await authProvider.updateUserLevel(widget.level + 1);
     }
   }
@@ -232,12 +249,30 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () {
-                                Navigator.of(
-                                  context,
-                                ).popUntil((route) => route.isFirst);
-                                // Navigate to next level if passed
                                 if (_isPassed) {
-                                  // Logic to navigate to next level
+                                  // Keyingi daraja — pop to first then push new quiz
+                                  Navigator.of(
+                                    context,
+                                  ).popUntil((route) => route.isFirst);
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => QuizScreen(
+                                        subject: widget.subject,
+                                        level: widget.level + 1,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  // Qayta urinish — restart same level
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => QuizScreen(
+                                        subject: widget.subject,
+                                        level: widget.level,
+                                      ),
+                                    ),
+                                  );
                                 }
                               },
                               style: ElevatedButton.styleFrom(

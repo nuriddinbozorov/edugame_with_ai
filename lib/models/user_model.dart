@@ -27,23 +27,27 @@ class User {
     required this.updatedAt,
   });
 
+  static int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return null;
+  }
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      grade: json['grade'] as int?,
-      level: json['level'] as int? ?? 1,
-      points: json['points'] as int? ?? 0,
-      coins: json['coins'] as int? ?? 0,
-      gems: json['gems'] as int? ?? 0,
-      streak: json['streak'] as int? ?? 0,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      grade: _toInt(json['grade']),
+      level: _toInt(json['level']) ?? 1,
+      points: _toInt(json['points']) ?? 0,
+      coins: _toInt(json['coins']) ?? 0,
+      gems: _toInt(json['gems']) ?? 0,
+      streak: _toInt(json['streak']) ?? 0,
       avatarUrl: json['avatar_url'] as String?,
-      // createdAt: json['created_at'] != null
-      //     ? DateTime.parse(json['created_at'] as String)
-      //     : DateTime.now(),
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
     );
   }
@@ -143,11 +147,11 @@ class UserStats {
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(
-      totalPoints: json['total_points'] as int? ?? 0,
-      totalTests: json['total_tests'] as int? ?? 0,
+      totalPoints: (json['total_points'] as num?)?.toInt() ?? 0,
+      totalTests: (json['total_tests'] as num?)?.toInt() ?? 0,
       avgScore: (json['avg_score'] as num?)?.toDouble() ?? 0.0,
-      totalAchievements: json['total_achievements'] as int? ?? 0,
-      currentStreak: json['current_streak'] as int? ?? 0,
+      totalAchievements: (json['total_achievements'] as num?)?.toInt() ?? 0,
+      currentStreak: (json['current_streak'] as num?)?.toInt() ?? 0,
     );
   }
 
