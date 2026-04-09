@@ -10,9 +10,11 @@ import 'services/auth_provider.dart';
 import 'services/ai_provider.dart';
 import 'services/gemini_service.dart';
 import 'services/supabase_service.dart';
+import 'services/connectivity_service.dart';
 import 'utils/logger.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'widgets/connectivity_wrapper.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -80,6 +82,7 @@ class EduGameApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AiProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectivityService()),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
@@ -241,6 +244,11 @@ class EduGameApp extends StatelessWidget {
 
         // Home page - RootScreen orqali authentication tekshiradi
         home: const RootScreen(),
+
+        // Barcha ekranlarga connectivity wrapper qo'shish
+        builder: (context, child) => ConnectivityWrapper(
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }
