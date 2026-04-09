@@ -7,6 +7,7 @@ import '../models/subject_model.dart';
 import 'subject_screen.dart';
 import 'profile_screen.dart';
 import 'leaderboard_screen.dart';
+import 'ai_chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -79,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final screens = [
       _buildHomeTab(),
+      const AiChatScreen(),
       const LeaderboardScreen(),
       const ProfileScreen(),
     ];
@@ -90,8 +92,13 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: _onItemTapped,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Bosh sahifa'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.smart_toy),
+            label: 'EduBot',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.leaderboard),
             label: 'Yetakchilar',

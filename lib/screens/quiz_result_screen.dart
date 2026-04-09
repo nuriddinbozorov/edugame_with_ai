@@ -5,6 +5,8 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../constants/app_constants.dart';
 import '../models/subject_model.dart';
 import '../services/auth_provider.dart';
+import '../services/ai_provider.dart';
+import '../services/gemini_service.dart';
 import '../services/supabase_service.dart';
 import 'quiz_screen.dart';
 
@@ -44,6 +46,24 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
       _confettiController.play();
       _updateUserProgress();
     }
+    _loadAiAnalysis();
+  }
+
+  Future<void> _loadAiAnalysis() async {
+    if (!GeminiService().isInitialized) return;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final aiProvider = Provider.of<AiProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    if (user == null) return;
+
+    final allResults = await SupabaseService().getUserTestResults(user.id);
+    final recentResults = allResults.take(5).toList();
+
+    await aiProvider.analyzePerformance(
+      recentResults: recentResults,
+      user: user,
+      subjectNames: [widget.subject.nameUz],
+    );
   }
 
   @override
@@ -217,7 +237,104 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 24),
+
+                      // AI Tahlil kartochkasi
+                      if (GeminiService().isInitialized)
+                        Consumer<AiProvider>(
+                          builder: (ctx, ai, _) {
+                            if (ai.isAnalyzing) {
+                              return Container(
+                                padding: const EdgeInsets.all(AppSizes.paddingLarge),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+                                  border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 20, height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text('EduBot tahlil qilmoqda...', style: TextStyle(color: AppColors.textSecondary)),
+                                  ],
+                                ),
+                              );
+                            }
+                            final analysis = ai.lastAnalysis;
+                            if (analysis == null || analysis.xulosa.isEmpty) return const SizedBox.shrink();
+
+                            return Container(
+                              padding: const EdgeInsets.all(AppSizes.paddingLarge),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [AppColors.primary.withOpacity(0.08), AppColors.accent.withOpacity(0.05)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+                                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 32, height: 32,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: const Icon(Icons.smart_toy, color: AppColors.primary, size: 18),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'EduBot Tahlili',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(analysis.xulosa, style: const TextStyle(color: AppColors.textPrimary, height: 1.5)),
+                                  if (analysis.tavsiyalar.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    const Text('Tavsiyalar:', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                    const SizedBox(height: 6),
+                                    ...analysis.tavsiyalar.map((t) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('• ', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                                          Expanded(child: Text(t, style: const TextStyle(color: AppColors.textSecondary, height: 1.4))),
+                                        ],
+                                      ),
+                                    )),
+                                  ],
+                                  if (analysis.motivatsiya.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.success.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        analysis.motivatsiya,
+                                        style: const TextStyle(color: AppColors.success, fontStyle: FontStyle.italic, height: 1.4),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+
+                      const SizedBox(height: 24),
 
                       // Buttons
                       Row(

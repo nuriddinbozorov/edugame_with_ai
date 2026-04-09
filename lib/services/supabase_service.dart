@@ -316,6 +316,32 @@ class SupabaseService {
     }
   }
 
+  /// Berilgan fan bo'yicha foydalanuvchi o'tgan eng yuqori darajani qaytaradi
+  /// (score >= 60% bo'lsa o'tilgan hisoblanadi)
+  Future<int> getSubjectMaxUnlockedLevel(String userId, String subjectId) async {
+    try {
+      final response = await client
+          .from('test_results')
+          .select('level, correct_answers, total_questions')
+          .eq('user_id', userId)
+          .eq('subject_id', subjectId);
+
+      int maxCompleted = 0;
+      for (final row in response as List) {
+        final correct = (row['correct_answers'] as num).toInt();
+        final total = (row['total_questions'] as num).toInt();
+        final level = (row['level'] as num).toInt();
+        if (total > 0 && correct / total >= 0.6 && level > maxCompleted) {
+          maxCompleted = level;
+        }
+      }
+      // O'tilgan daraja + 1 ga ruxsat (1 dan kam bo'lmaydi)
+      return maxCompleted + 1;
+    } catch (e) {
+      return 1;
+    }
+  }
+
   Future<List<TestResult>> getUserTestResults(String userId) async {
     try {
       AppLogger.info('Fetching test results for user $userId');

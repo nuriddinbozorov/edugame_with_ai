@@ -2,16 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 
 import 'constants/app_constants.dart';
 import 'services/auth_provider.dart';
+import 'services/ai_provider.dart';
+import 'services/gemini_service.dart';
 import 'services/supabase_service.dart';
 import 'utils/logger.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Anonymous signin for Firebase AI
+    await FirebaseAuth.instance.signInAnonymously();
+    AppLogger.success('App: Firebase initialized successfully');
+  } catch (e, stackTrace) {
+    AppLogger.error('App: Failed to initialize Firebase', e, stackTrace);
+  }
 
   // Initialize Supabase
   try {
@@ -28,7 +45,13 @@ void main() async {
     AppLogger.error('App: Failed to initialize Supabase', e, stackTrace);
   }
 
-  // System UI configuration
+  // Initialize Gemini AI with Firebase
+  try {
+    GeminiService().initialize();
+    AppLogger.success('App: Gemini AI initialized with Firebase');
+  } catch (e, stackTrace) {
+    AppLogger.error('App: Failed to initialize Gemini AI', e, stackTrace);
+  }
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -54,7 +77,10 @@ class EduGameApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AiProvider()),
+      ],
       child: MaterialApp(
         title: AppStrings.appName,
         debugShowCheckedModeBanner: false,
@@ -299,10 +325,7 @@ class SplashScreen extends StatelessWidget {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
                 SizedBox(height: 24),
-                Text(
-                  'Yuklanmoqda...',
-                  style: TextStyle(color: Colors.white70),
-                ),
+                Text('Yuklanmoqda...', style: TextStyle(color: Colors.white70)),
               ],
             ),
           ),

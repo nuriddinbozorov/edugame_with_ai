@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../constants/app_constants.dart';
 import '../models/subject_model.dart';
 import '../services/supabase_service.dart';
+import '../services/ai_provider.dart';
+import '../services/gemini_service.dart';
 import 'quiz_result_screen.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -25,6 +28,8 @@ class _QuizScreenState extends State<QuizScreen> {
   int _timeLeft = 30;
   bool _isLoading = true;
   String? _errorMessage;
+  int _hintsUsedThisQuiz = 0;
+  static const int _maxFreeHints = 2;
 
   // Savollar ro'yxati
   late List<Question> _questions;
@@ -58,9 +63,17 @@ class _QuizScreenState extends State<QuizScreen> {
 
       if (mounted) {
         if (questions.isEmpty) {
-          // Demo ma'lumotlar agar Supabase bo'sh bo'lsa
+          // Supabase bo'sh bo'lsa AI dan savollar yuklaymiz
+          List<Question> aiQuestions = [];
+          if (GeminiService().isInitialized) {
+            aiQuestions = await GeminiService().generateQuestions(
+              subjectId: widget.subject.id,
+              subjectUz: widget.subject.nameUz,
+              level: widget.level,
+            );
+          }
           setState(() {
-            _questions = _getDemoQuestions();
+            _questions = aiQuestions.isNotEmpty ? aiQuestions : _getDemoQuestions();
             _isLoading = false;
           });
         } else {
@@ -84,57 +97,70 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   List<Question> _getDemoQuestions() {
-    return [
-      Question(
-        id: '1',
-        subjectId: widget.subject.id,
-        level: widget.level,
-        type: QuestionType.multipleChoice,
-        questionText: '2 + 2 = ?',
-        options: ['3', '4', '5', '6'],
-        correctAnswer: '4',
-        points: 10,
-      ),
-      Question(
-        id: '2',
-        subjectId: widget.subject.id,
-        level: widget.level,
-        type: QuestionType.multipleChoice,
-        questionText: '5 x 3 = ?',
-        options: ['12', '15', '18', '20'],
-        correctAnswer: '15',
-        points: 10,
-      ),
-      Question(
-        id: '3',
-        subjectId: widget.subject.id,
-        level: widget.level,
-        type: QuestionType.multipleChoice,
-        questionText: '10 - 7 = ?',
-        options: ['2', '3', '4', '5'],
-        correctAnswer: '3',
-      ),
-      Question(
-        id: '4',
-        subjectId: widget.subject.id,
-        level: widget.level,
-        type: QuestionType.multipleChoice,
-        questionText: '20 / 4 = ?',
-        options: ['4', '5', '6', '7'],
-        correctAnswer: '5',
-        points: 10,
-      ),
-      Question(
-        id: '5',
-        subjectId: widget.subject.id,
-        level: widget.level,
-        type: QuestionType.multipleChoice,
-        questionText: '3 x 7 = ?',
-        options: ['18', '21', '24', '27'],
-        correctAnswer: '21',
-        points: 10,
-      ),
-    ];
+    final type = widget.subject.type;
+    final List<Map<String, dynamic>> raw;
+
+    if (type == 'uzbekLanguage') {
+      raw = [
+        {'q': '"Kitob" so\'zining ko\'pligi?', 'o': ['Kitoblar', 'Kitoblon', 'Kitobcha', 'Kitoblik'], 'a': 'Kitoblar'},
+        {'q': 'Qaysi so\'z ot turkumiga kiradi?', 'o': ['Yugurmoq', 'Baland', 'Daryo', 'Tez'], 'a': 'Daryo'},
+        {'q': '"Do\'st" so\'zining antonimi?', 'o': ['Aka', 'Dushman', 'Qo\'shni', 'Tanish'], 'a': 'Dushman'},
+        {'q': 'Qaysi so\'z fe\'l?', 'o': ['Baland', 'Tosh', 'O\'qimoq', 'Katta'], 'a': 'O\'qimoq'},
+        {'q': 'O\'zbek alifbosida nechta harf bor?', 'o': ['26', '29', '30', '32'], 'a': '29'},
+      ];
+    } else if (type == 'english') {
+      raw = [
+        {'q': '"Apple" o\'zbekcha?', 'o': ['Olma', 'Nok', 'Uzum', 'Shaftoli'], 'a': 'Olma'},
+        {'q': '"I ___ a student."', 'o': ['is', 'am', 'are', 'be'], 'a': 'am'},
+        {'q': '"Red" o\'zbekcha?', 'o': ['Ko\'k', 'Yashil', 'Qizil', 'Sariq'], 'a': 'Qizil'},
+        {'q': '"Good morning" nimani anglatadi?', 'o': ['Xayr', 'Assalomu alaykum', 'Hayrli tong', 'Rahmat'], 'a': 'Hayrli tong'},
+        {'q': '"Book" o\'zbek tilida?', 'o': ['Ruchka', 'Daftar', 'Kitob', 'Qalam'], 'a': 'Kitob'},
+      ];
+    } else if (type == 'science') {
+      raw = [
+        {'q': 'Suvning kimyoviy formulasi?', 'o': ['CO2', 'H2O', 'O2', 'NaCl'], 'a': 'H2O'},
+        {'q': 'Qaysi gazni nafas olamiz?', 'o': ['Azot', 'Kislorod', 'Vodorod', 'CO2'], 'a': 'Kislorod'},
+        {'q': 'Quyosh sistemasida nechta sayyora bor?', 'o': ['7', '8', '9', '10'], 'a': '8'},
+        {'q': 'Eng katta hayvon qaysi?', 'o': ['Fil', 'Ko\'k kit', 'Zubr', 'Timsoh'], 'a': 'Ko\'k kit'},
+        {'q': 'Fotosintezda qanday gaz ajraladi?', 'o': ['CO2', 'Azot', 'Kislorod', 'Vodorod'], 'a': 'Kislorod'},
+      ];
+    } else if (type == 'history') {
+      raw = [
+        {'q': 'O\'zbekiston mustaqilligini qaysi yilda oldi?', 'o': ['1989', '1990', '1991', '1992'], 'a': '1991'},
+        {'q': 'Amir Temur poytaxti?', 'o': ['Buxoro', 'Xiva', 'Samarqand', 'Toshkent'], 'a': 'Samarqand'},
+        {'q': 'Birinchi jahon urushi yillari?', 'o': ['1904-1907', '1914-1918', '1918-1922', '1939-1945'], 'a': '1914-1918'},
+        {'q': 'Al-Xorazmiy qaysi sohada mashhur?', 'o': ['Tibbiyot', 'Matematika va astronomiya', 'San\'at', 'Adabiyot'], 'a': 'Matematika va astronomiya'},
+        {'q': 'Ibn Sino mutaxassisligi?', 'o': ['Riyoziyot', 'Tarix', 'Tibbiyot va falsafa', 'Astronomiya'], 'a': 'Tibbiyot va falsafa'},
+      ];
+    } else if (type == 'geography') {
+      raw = [
+        {'q': 'Dunyodagi eng uzun daryo?', 'o': ['Amazon', 'Nil', 'Volga', 'Yanszı'], 'a': 'Nil'},
+        {'q': 'O\'zbekiston qaysi qit\'ada?', 'o': ['Afrika', 'Yevropa', 'Osiyo', 'Amerika'], 'a': 'Osiyo'},
+        {'q': 'Dunyodagi eng katta okean?', 'o': ['Atlantika', 'Hind', 'Shimoliy Muz', 'Tinch'], 'a': 'Tinch'},
+        {'q': 'O\'zbekiston nechta viloyatdan iborat?', 'o': ['10', '12', '14', '15'], 'a': '14'},
+        {'q': 'Dunyo qit\'alari soni?', 'o': ['5', '6', '7', '8'], 'a': '7'},
+      ];
+    } else {
+      // Matematika (default)
+      raw = [
+        {'q': '2 + 2 = ?', 'o': ['3', '4', '5', '6'], 'a': '4'},
+        {'q': '5 × 3 = ?', 'o': ['12', '15', '18', '20'], 'a': '15'},
+        {'q': '10 - 7 = ?', 'o': ['2', '3', '4', '5'], 'a': '3'},
+        {'q': '20 ÷ 4 = ?', 'o': ['4', '5', '6', '7'], 'a': '5'},
+        {'q': '3 × 7 = ?', 'o': ['18', '21', '24', '27'], 'a': '21'},
+      ];
+    }
+
+    return raw.asMap().entries.map((e) => Question(
+      id: '${e.key + 1}',
+      subjectId: widget.subject.id,
+      level: widget.level,
+      type: QuestionType.multipleChoice,
+      questionText: e.value['q'] as String,
+      options: List<String>.from(e.value['o'] as List),
+      correctAnswer: e.value['a'] as String,
+      points: 10,
+    )).toList();
   }
 
   void _startTimer() {
@@ -306,6 +332,52 @@ class _QuizScreenState extends State<QuizScreen> {
                       icon: const Icon(Icons.close),
                       onPressed: () => _showExitDialog(),
                     ),
+                    // Maslahat tugmasi
+                    if (GeminiService().isInitialized && !_isAnswered)
+                      GestureDetector(
+                        onTap: _hintsUsedThisQuiz < _maxFreeHints
+                            ? () => _showHint()
+                            : null,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _hintsUsedThisQuiz < _maxFreeHints
+                                ? AppColors.accent.withOpacity(0.15)
+                                : Colors.grey.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _hintsUsedThisQuiz < _maxFreeHints
+                                  ? AppColors.accent
+                                  : Colors.grey,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.lightbulb_outline,
+                                size: 18,
+                                color: _hintsUsedThisQuiz < _maxFreeHints
+                                    ? AppColors.accent
+                                    : Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${_maxFreeHints - _hintsUsedThisQuiz}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: _hintsUsedThisQuiz < _maxFreeHints
+                                      ? AppColors.accent
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -503,6 +575,83 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showHint() async {
+    if (_hintsUsedThisQuiz >= _maxFreeHints) return;
+    _timer?.cancel();
+    setState(() => _hintsUsedThisQuiz++);
+
+    final question = _questions[_currentQuestionIndex];
+    final aiProvider = Provider.of<AiProvider>(context, listen: false);
+
+    await aiProvider.requestHint(
+      question: question,
+      subjectUz: widget.subject.nameUz,
+    );
+
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Consumer<AiProvider>(
+          builder: (ctx, ai, _) => Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Icon(Icons.lightbulb, color: AppColors.accent, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'EduBot Maslahat',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (ai.isLoadingHint)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  Text(
+                    ai.currentHint ?? 'Savolni diqqat bilan o\'qing.',
+                    style: const TextStyle(fontSize: 16, color: AppColors.textPrimary, height: 1.5),
+                  ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Tushundim'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Bottom sheet yopilgach taymerni qayta ishga tushiramiz
+    if (!_isAnswered) _startTimer();
   }
 
   void _showExitDialog() {

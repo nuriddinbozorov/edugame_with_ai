@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import '../models/user_model.dart';
 import '../services/supabase_service.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -11,7 +10,7 @@ class LeaderboardScreen extends StatefulWidget {
 }
 
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
-  bool _isLoading = true;
+  bool _isListLoading = false;
   List<Map<String, dynamic>> _leaders = [];
 
   @override
@@ -21,83 +20,35 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   Future<void> _loadLeaderboard() async {
+    setState(() => _isListLoading = true);
     try {
-      setState(() => _isLoading = true);
-
-      final supabaseService = SupabaseService();
-      final users = await supabaseService.getLeaderboard(limit: 10);
-
-      if (mounted) {
-        if (users.isNotEmpty) {
-          setState(() {
-            _leaders = users
-                .asMap()
-                .entries
-                .map((entry) => {
-                      'name': entry.value.name,
-                      'points': entry.value.points,
-                      'level': entry.value.level,
-                      'rank': entry.key + 1,
-                    })
-                .toList();
-            _isLoading = false;
-          });
-        } else {
-          // Demo ma'lumotlar fallback sifatida
-          setState(() {
-            _leaders = _getDemoLeaders();
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
+      final users = await SupabaseService().getLeaderboard(limit: 20);
       if (mounted) {
         setState(() {
-          _leaders = _getDemoLeaders();
-          _isLoading = false;
+          _leaders = users
+              .asMap()
+              .entries
+              .map((e) => {
+                    'name': e.value.name,
+                    'points': e.value.points,
+                    'level': e.value.level,
+                    'rank': e.key + 1,
+                  })
+              .toList();
+          _isListLoading = false;
         });
       }
+    } catch (_) {
+      if (mounted) setState(() => _isListLoading = false);
     }
-  }
-
-  List<Map<String, dynamic>> _getDemoLeaders() {
-    return [
-      {'name': 'Aziza Karimova', 'points': 1250, 'level': 15, 'rank': 1},
-      {'name': 'Jamshid Tursunov', 'points': 1180, 'level': 14, 'rank': 2},
-      {'name': 'Dilnoza Rahimova', 'points': 1050, 'level': 13, 'rank': 3},
-      {'name': 'Sardor Alimov', 'points': 980, 'level': 12, 'rank': 4},
-      {'name': 'Madina Yusupova', 'points': 920, 'level': 12, 'rank': 5},
-      {'name': 'Bekzod Ismoilov', 'points': 880, 'level': 11, 'rank': 6},
-      {'name': 'Feruza Davlatova', 'points': 840, 'level': 11, 'rank': 7},
-      {'name': 'Otabek Rustamov', 'points': 800, 'level': 10, 'rank': 8},
-      {'name': 'Nilufar Saidova', 'points': 760, 'level': 10, 'rank': 9},
-      {'name': 'Jasur Mirzaev', 'points': 720, 'level': 9, 'rank': 10},
-    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.warning.withOpacity(0.2),
-                AppColors.background,
-              ],
-            ),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
-          ),
-        ),
-      );
-    }
+    // Top 3 faqat 3 va undan ko'p bo'lsa
+    final hasTop3 = _leaders.length >= 3;
+    // Ro'yxat: top3 bo'lsa 4-dan, aks holda hammasi
+    final listItems = hasTop3 ? _leaders.sublist(3) : _leaders;
 
     return Scaffold(
       body: Container(
@@ -105,48 +56,82 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.warning.withOpacity(0.2), AppColors.background],
+            colors: [
+              AppColors.warning.withOpacity(0.2),
+              AppColors.background,
+            ],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+              // Header — har doim ko'rinadi
               Padding(
-                padding: const EdgeInsets.all(AppSizes.paddingLarge),
-                child: Column(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.paddingLarge,
+                  AppSizes.paddingLarge,
+                  AppSizes.paddingLarge,
+                  0,
+                ),
+                child: Row(
                   children: [
-                    const Text('🏆', style: TextStyle(fontSize: 48)),
-                    const SizedBox(height: 8),
-                    const Text(
-                      AppStrings.leaderboard,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('🏆', style: TextStyle(fontSize: 40)),
+                          SizedBox(height: 4),
+                          Text(
+                            AppStrings.leaderboard,
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Eng yaxshi o\'quvchilar',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Eng yaxshi o\'quvchilar',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
+                    // Faqat jadval yangilanadigan refresh tugmasi
+                    IconButton(
+                      onPressed: _isListLoading ? null : _loadLeaderboard,
+                      icon: _isListLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.primary,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.refresh,
+                              color: AppColors.primary,
+                            ),
                     ),
                   ],
                 ),
               ),
 
-              // Top 3
-              if (_leaders.length >= 3)
+              const SizedBox(height: 16),
+
+              // Top 3 podium (faqat 3+ kishi bo'lsa)
+              if (hasTop3)
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.paddingLarge,
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildTopCard(_leaders[1], 2),
                       const SizedBox(width: 8),
@@ -157,9 +142,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   ),
                 ),
 
-              const SizedBox(height: 24),
+              if (hasTop3) const SizedBox(height: 16),
 
-              // Others
+              // Jadval qismi — faqat shu qism yuklanadi
               Expanded(
                 child: Container(
                   decoration: const BoxDecoration(
@@ -169,27 +154,63 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       topRight: Radius.circular(AppSizes.radiusLarge),
                     ),
                   ),
-                  child: _leaders.length > 3
-                      ? ListView.builder(
-                          padding:
-                              const EdgeInsets.all(AppSizes.paddingMedium),
-                          itemCount: _leaders.length - 3,
-                          itemBuilder: (context, index) {
-                            final leader = _leaders[index + 3];
-                            return _buildLeaderCard(leader);
-                          },
-                        )
-                      : const Center(
-                          child: Text(
-                            'Hozircha boshqa o\'quvchilar yo\'q',
-                            style: TextStyle(color: AppColors.textSecondary),
+                  child: _isListLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primary,
+                            ),
                           ),
-                        ),
+                        )
+                      : listItems.isEmpty
+                          ? _buildEmptyState(hasTop3)
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(
+                                AppSizes.paddingMedium,
+                              ),
+                              itemCount: listItems.length,
+                              itemBuilder: (context, index) =>
+                                  _buildLeaderCard(listItems[index]),
+                            ),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool hasTop3) {
+    if (hasTop3) {
+      // Top 3 ko'rsatilgan, ro'yxatda boshqa yo'q
+      return const Center(
+        child: Text(
+          'Top 3 dan tashqari o\'quvchilar yo\'q',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      );
+    }
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_outline, size: 64, color: AppColors.textSecondary),
+          SizedBox(height: 12),
+          Text(
+            'Hozircha o\'quvchilar yo\'q',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Birinchi bo\'ling!',
+            style: TextStyle(fontSize: 13, color: AppColors.textHint),
+          ),
+        ],
       ),
     );
   }
@@ -206,7 +227,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     return Expanded(
       child: Container(
         height: heights[rank],
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: colors[rank]!.withOpacity(0.1),
           borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
@@ -215,8 +236,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(medals[rank]!, style: const TextStyle(fontSize: 32)),
-            const SizedBox(height: 8),
+            Text(medals[rank]!, style: const TextStyle(fontSize: 28)),
+            const SizedBox(height: 6),
             Text(
               leader['name'].toString().split(' ')[0],
               style: TextStyle(
@@ -228,7 +249,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               '${leader['points']} ball',
               style: TextStyle(fontSize: 10, color: colors[rank]),
@@ -249,7 +270,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       ),
       child: Row(
         children: [
-          // Rank
           Container(
             width: 32,
             height: 32,
@@ -269,12 +289,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Avatar
           CircleAvatar(
             backgroundColor: AppColors.primary.withOpacity(0.2),
             child: Text(
-              leader['name'].toString()[0],
+              leader['name'].toString()[0].toUpperCase(),
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
@@ -282,8 +300,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Name and level
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,8 +322,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               ],
             ),
           ),
-
-          // Points
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(

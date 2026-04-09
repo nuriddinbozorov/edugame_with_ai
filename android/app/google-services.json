@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "340557847329",
+    "project_id": "edugame-with-ai",
+    "storage_bucket": "edugame-with-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:340557847329:android:b76b256673d778e8d77c60",
+        "android_client_info": {
+          "package_name": "com.example.edugame_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCUOtd4Esg2J1Vxt5cnTfTmf0Q1juG9iM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

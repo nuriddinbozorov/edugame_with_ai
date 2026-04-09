@@ -170,7 +170,7 @@ class AppStrings {
   static const level = 'Daraja';
   static const points = 'Ball';
   static const coins = 'Tangalar';
-  static const gems = 'Qimmatbaho toshlar';
+  static const gems = 'Olmoslar';
   static const streak = 'Ketma-ketlik';
   static const progress = 'Taraqqiyot';
   static const total = 'Jami';

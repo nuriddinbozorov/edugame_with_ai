@@ -53,6 +53,10 @@ dependencies:
   intl: ^0.19.0
   uuid: ^4.3.3
 
+  # AI - Firebase
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.2.0
+  firebase_ai: any
   # Charts and animations
   fl_chart: ^0.66.0
   percent_indicator: ^4.2.3

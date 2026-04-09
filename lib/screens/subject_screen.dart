@@ -3,28 +3,62 @@ import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../models/subject_model.dart';
 import '../services/auth_provider.dart';
+import '../services/supabase_service.dart';
 import 'quiz_screen.dart';
 
-class SubjectScreen extends StatelessWidget {
+class SubjectScreen extends StatefulWidget {
   final Subject subject;
 
   const SubjectScreen({super.key, required this.subject});
 
   @override
+  State<SubjectScreen> createState() => _SubjectScreenState();
+}
+
+class _SubjectScreenState extends State<SubjectScreen> {
+  int _maxUnlockedLevel = 1;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.currentUser?.id;
+    if (userId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final maxLevel = await SupabaseService().getSubjectMaxUnlockedLevel(
+      userId,
+      widget.subject.id,
+    );
+
+    if (mounted) {
+      setState(() {
+        _maxUnlockedLevel = maxLevel;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final subjectColor = widget.subject.color != null
+        ? Color(int.parse('0xFF${widget.subject.color}'))
+        : AppColors.primary;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              (subject.color != null
-                      ? Color(int.parse('0xFF${subject.color}'))
-                      : AppColors.primary)
-                  .withOpacity(0.2),
-              AppColors.background,
-            ],
+            colors: [subjectColor.withOpacity(0.2), AppColors.background],
           ),
         ),
         child: SafeArea(
@@ -40,7 +74,7 @@ class SubjectScreen extends StatelessWidget {
                       onPressed: () => Navigator.pop(context),
                     ),
                     Text(
-                      subject.iconPath ?? subject.getIconEmoji(),
+                      widget.subject.iconPath ?? widget.subject.getIconEmoji(),
                       style: const TextStyle(fontSize: 32),
                     ),
                     const SizedBox(width: 12),
@@ -49,7 +83,7 @@ class SubjectScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            subject.nameUz,
+                            widget.subject.nameUz,
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -57,7 +91,7 @@ class SubjectScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${subject.totalLevels} ta daraja',
+                            '${widget.subject.totalLevels} ta daraja',
                             style: const TextStyle(
                               fontSize: 14,
                               color: AppColors.textSecondary,
@@ -72,37 +106,26 @@ class SubjectScreen extends StatelessWidget {
 
               // Levels Grid
               Expanded(
-                child: Consumer<AuthProvider>(
-                  builder: (context, authProvider, _) {
-                    final user = authProvider.currentUser;
-                    final currentLevel = user?.level ?? 1;
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(AppSizes.paddingLarge),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: AppSizes.paddingMedium,
+                              crossAxisSpacing: AppSizes.paddingMedium,
+                              childAspectRatio: 1.0,
+                            ),
+                        itemCount: widget.subject.totalLevels,
+                        itemBuilder: (context, index) {
+                          final level = index + 1;
+                          final isUnlocked = level <= _maxUnlockedLevel;
+                          final isCurrent = level == _maxUnlockedLevel;
 
-                    return GridView.builder(
-                      padding: const EdgeInsets.all(AppSizes.paddingLarge),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: AppSizes.paddingMedium,
-                            crossAxisSpacing: AppSizes.paddingMedium,
-                            childAspectRatio: 1.0,
-                          ),
-                      itemCount: subject.totalLevels,
-                      itemBuilder: (context, index) {
-                        final level = index + 1;
-                        final isUnlocked = level <= currentLevel;
-                        final isCurrent = level == currentLevel;
-
-                        return _buildLevelCard(
-                          context,
-                          level,
-                          isUnlocked,
-                          isCurrent,
-                          subject,
-                        );
-                      },
-                    );
-                  },
-                ),
+                          return _buildLevelCard(level, isUnlocked, isCurrent);
+                        },
+                      ),
               ),
             ],
           ),
@@ -111,21 +134,18 @@ class SubjectScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLevelCard(
-    BuildContext context,
-    int level,
-    bool isUnlocked,
-    bool isCurrent,
-    Subject subject,
-  ) {
+  Widget _buildLevelCard(int level, bool isUnlocked, bool isCurrent) {
     return GestureDetector(
       onTap: isUnlocked
-          ? () {
-              Navigator.of(context).push(
+          ? () async {
+              await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => QuizScreen(subject: subject, level: level),
+                  builder: (_) =>
+                      QuizScreen(subject: widget.subject, level: level),
                 ),
               );
+              // Kviz tugagach progressni yangilash
+              _loadProgress();
             }
           : null,
       child: Container(
@@ -149,7 +169,9 @@ class SubjectScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isUnlocked ? Icons.check_circle : Icons.lock,
+              isUnlocked
+                  ? (isCurrent ? Icons.play_circle_fill : Icons.check_circle)
+                  : Icons.lock,
               size: 32,
               color: isUnlocked
                   ? (isCurrent ? Colors.white : AppColors.success)
@@ -175,6 +197,14 @@ class SubjectScreen extends StatelessWidget {
                     fontSize: 10,
                     color: AppColors.textSecondary,
                   ),
+                ),
+              ),
+            if (isCurrent)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Hozirgi',
+                  style: TextStyle(fontSize: 10, color: Colors.white70),
                 ),
               ),
           ],
