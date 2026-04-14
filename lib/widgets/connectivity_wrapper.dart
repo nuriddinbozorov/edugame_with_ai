@@ -109,7 +109,6 @@ class _ConnectivityBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     final isOnline = isConnected;
 
     return SafeArea(
